@@ -629,7 +629,7 @@ int pthread_cond_destroy(pthread_cond_t *cond)
 	if (AttemptSemaphore(&cond->semaphore) == FALSE)
 		return EBUSY;
 
-	if (!IsListEmpty((struct List *)&cond->waiters))
+	if (!IsListEmpty(&cond->waiters))
 	{
 		ReleaseSemaphore(&cond->semaphore);
 		return EBUSY;
@@ -791,6 +791,9 @@ static int _pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	task = FindTask(NULL);
 
 	struct timeval wantedtime;
+	wantedtime.tv_sec = 0;
+	wantedtime.tv_usec = 0;
+
 	if (abstime)
 	{
 		TIMESPEC_TO_TIMEVAL(&wantedtime, abstime);

@@ -168,7 +168,7 @@ struct pthread_cond
 {
 	int pad1;
 	struct SignalSemaphore semaphore;
-	struct MinList waiters;
+	struct List waiters;
 };
 
 typedef struct pthread_cond pthread_cond_t;
