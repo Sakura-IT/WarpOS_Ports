@@ -3,10 +3,13 @@
 #include <string.h>
 #include <errno.h>
 
-const char amigaversion[] = "$VER: Warpcollect 0.3 (19.07.2000)";
+const char amigaversion[] = "$VER: Warpcollect 0.4 (04.05.2021)";
 
 char *progname;
 
+#if defined (_LINUX_)
+
+#else
 /* From libnix */
 static char *amigapath(const char *path)
 { static char *s1=NULL;
@@ -110,14 +113,17 @@ static void copyfile(char *infile, char *outfile)
 	fclose(out);
 	fclose(in);
 }
-
+#endif
 int main(int argc, char **argv)
 {
 	int i, len = 0;
 	char *temp, *outname;
 	char *exec, *exec2, *exec3;
 	char *env;
-
+#if defined (_LINUX_)
+    char *exec4;
+#endif
+    
 	progname = argv[0];
 
 	for(i = 1; i < argc; i++) {
@@ -125,9 +131,13 @@ int main(int argc, char **argv)
 	}
 
 	exec = malloc(len + 256);
-	exec2 = malloc(256 + 20);
-	exec3 = malloc(256 + 20);
-	temp = malloc(256);
+	exec2 = malloc(len + 256);
+	exec3 = malloc(len + 256);
+#if defined (_LINUX_)
+    exec4 = malloc(len + 256);
+#endif
+    temp = malloc(len + 256);
+
 
 	if (temp == NULL || exec == NULL || exec2 == NULL || exec3 == NULL) {
 		fprintf(stderr, "%s: Out of memory\n", progname);
@@ -135,8 +145,12 @@ int main(int argc, char **argv)
 	}
 
 	strcpy(temp, "a.out");
-	strcpy(exec, "/gg/bin/ld");
-
+#if defined (_LINUX_)    
+	strcpy(exec, "/gg/bin/ppc-morphos-ld");
+#else
+    strcpy(exec, "/gg/bin/ld");
+#endif
+    
 	/* Get the output file name and copy the commandline */
 	for(i = 1; i < argc; i++) {
 		sprintf(exec, "%s %s", exec, argv[i]);
@@ -145,28 +159,45 @@ int main(int argc, char **argv)
 	}
 
 	/* elf2exe2 doesn't support unixpaths :( */
+#if defined (_LINUX_)
+    outname = strdup(temp);
+#else
 	outname = amigapath(temp);
 	if (outname == NULL) {
 		fprintf(stderr, "%s: Out of memory\n", progname);
 		return 20;
 	}
-
+#endif
 	sprintf(exec2, "elf2exe2 %s %s", outname, outname);
 	sprintf(temp, "%s.warpelf", outname);
-	sprintf(exec3, "strip -R .gnu.attributes %s", outname);
-
+#if defined (_LINUX_)
+	sprintf(exec3, "ppc-morphos-strip -R .gnu.attributes %s", outname);
+    sprintf(exec4, "cp %s %s", outname, temp);
+#else
+    sprintf(exec3, "strip -R .gnu.attributes %s", outname);
+#endif
 	i = system(exec); /* Execute the linker */
 	if (i != 0)
 		return errno;
 	
+    env = getenv("KEEPWARPELF");
+	if (env != NULL && atoi(env) > 0)
+#if defined (_LINUX_)
+        i = system(exec4);
+        if (i != 0) {
+            i = errno;
+            return i;
+        }
+#else
+		copyfile(outname, temp);
+#endif    
 	i = system(exec3); /* Execute the strip */
 	if (i != 0)
 		return errno;
 
-	env = getenv("KEEPWARPELF");
-	if (env != NULL && atoi(env) > 0)
-		copyfile(outname, temp);
-
+#if defined (_LINUX_)
+    
+#else
 	i = system(exec2); /* Execute elf2exe2 */
 	if (i != 0) {
 		i = errno;
@@ -174,6 +205,13 @@ int main(int argc, char **argv)
 		remove(temp);
 		return i;
 	}
-
+#endif
+    free(exec);
+    free(exec2);
+    free(exec3);
+#if defined (_LINUX_)
+    free(exec4);
+#endif
+    free(temp);
 	return 0;
 }
