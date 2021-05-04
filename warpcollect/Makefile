@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O3 -fomit-frame-pointer -s
+CFLAGS = -Wall -O3 -fomit-frame-pointer -D_LINUX_
 
 LIBS =
 
